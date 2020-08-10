@@ -1,14 +1,11 @@
 package com.melegy.retrofitcoroutines
 
 import android.os.Bundle
-import android.util.Log
 import androidx.appcompat.app.AppCompatActivity
-import com.melegy.retrofitcoroutines.remote.GenericResponse
-import com.melegy.retrofitcoroutines.remote.NetworkResponse
-import com.melegy.retrofitcoroutines.remote.NetworkResponseAdapterFactory
-import com.squareup.moshi.Moshi
+import com.melegy.retrofitcoroutines.remote.*
 import kotlinx.android.synthetic.main.activity_main.*
 import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
@@ -22,73 +19,106 @@ class MainActivity : AppCompatActivity() {
 	override fun onCreate(savedInstanceState: Bundle?) {
 		super.onCreate(savedInstanceState)
 		setContentView(R.layout.activity_main)
-
-		val moshi = Moshi.Builder().build()
 		val okHttpClient = OkHttpClient.Builder()
 			.addInterceptor(ApiRetryInterceptor(this))
 			.addInterceptor(HttpLoggingInterceptor().setLevel(HttpLoggingInterceptor.Level.BODY))
 			.build()
-		val retrofit = createRetrofit(moshi, okHttpClient)
+		val retrofit = createRetrofit(okHttpClient)
 		val service = retrofit.create<ApiService>()
-
+		val service2 = retrofit.create<ApiService2>()
 		testButton.setOnClickListener {
-			initNetworkCall(service)
+			clearTexts()
+			initServiceNetworkCall(service)
+			initServiceNetworkCall2(service2)
 		}
-		initNetworkCall(service)
+		initServiceNetworkCall(service)
+		initServiceNetworkCall2(service2)
 	}
 
-	private fun initNetworkCall(service: ApiService) {
-		dummyText.post {
-			dummyText.text = ""
-		}
-		dummyText2.post {
-			dummyText2.text = ""
-		}
-		dummyText3.post {
-			dummyText2.text = ""
-		}
+	private fun initServiceNetworkCall(service: ApiService) {
 		GlobalScope.launch {
-			val response1 = service.getSuccess()
-			dummyText.post {
-				dummyText.text = "$response1"
+			when (val response1 = service.getSuccess()) {
+				is NetworkResponse.Success -> {
+					dummyText.post {
+						dummyText.text = "${response1.body?.data}"
+					}
+				}
+				is NetworkResponse.Failure -> {
+					dummyText.post {
+						dummyText.text = "${response1.body?.data}"
+					}
+				}
 			}
-			when (response1) {
-				is NetworkResponse.Success -> Log.d(
-					TAG,
-					"Success response1.body ${response1.body}"
-				)
-				is NetworkResponse.ApiError -> Log.d(
-					TAG,
-					"ApiError response1.body ${response1.body}"
-				)
-				is NetworkResponse.NetworkError -> Log.d(TAG, "NetworkError")
-				is NetworkResponse.UnknownError -> Log.d(TAG, "UnknownError")
+			when (val response2 = service.getError()) {
+				is NetworkResponse.Success -> {
+					dummyText2.post {
+						dummyText2.text = "${response2.body}"
+					}
+				}
+				is NetworkResponse.Failure -> {
+					dummyText2.post {
+						dummyText2.text = "${response2.body}"
+					}
+				}
 			}
-			val response2 = service.getError()
-			dummyText2.post {
-				dummyText2.text = "$response2"
+			when (val response3 = service.getFailure()) {
+				is NetworkResponse.Success -> {
+					dummyText3.post {
+						dummyText3.text = "${response3.body}"
+					}
+				}
+				is NetworkResponse.Failure -> {
+					dummyText3.post {
+						dummyText3.text = "${response3.body}"
+					}
+				}
 			}
-			when (response2) {
-				is NetworkResponse.Success -> Log.d(TAG, "Success response2.body ${response2.body}")
-				is NetworkResponse.ApiError -> Log.d(
-					TAG,
-					"ApiError response2.body ${response2.body}"
-				)
-				is NetworkResponse.NetworkError -> Log.d(TAG, "NetworkError")
-				is NetworkResponse.UnknownError -> Log.d(TAG, "UnknownError")
+		}
+	}
+
+	private fun initServiceNetworkCall2(service: ApiService2) {
+		GlobalScope.launch {
+			service.getSuccess().collect {
+				when (val response4 = it) {
+					is NetworkResponse.Success -> {
+						dummyText4.post {
+							dummyText4.text = "${response4.body?.data}"
+						}
+					}
+					is NetworkResponse.Failure -> {
+						dummyText4.post {
+							dummyText4.text = "${response4.body?.data}"
+						}
+					}
+				}
 			}
-			val response3 = service.getFailure()
-			dummyText3.post {
-				dummyText3.text = "$response3"
+			service.getError().collect {
+				when (val response5 = it) {
+					is NetworkResponse.Success -> {
+						dummyText5.post {
+							dummyText5.text = "${response5.body}"
+						}
+					}
+					is NetworkResponse.Failure -> {
+						dummyText5.post {
+							dummyText5.text = "${response5.body}"
+						}
+					}
+				}
 			}
-			when (response3) {
-				is NetworkResponse.Success -> Log.d(TAG, "Success response3.body ${response3.body}")
-				is NetworkResponse.ApiError -> Log.d(
-					TAG,
-					"ApiError response3.body ${response3.body}"
-				)
-				is NetworkResponse.NetworkError -> Log.d(TAG, "NetworkError")
-				is NetworkResponse.UnknownError -> Log.d(TAG, "UnknownError")
+			service.getFailure().collect {
+				when (val response6 = it) {
+					is NetworkResponse.Success -> {
+						dummyText6.post {
+							dummyText6.text = "${response6.body}"
+						}
+					}
+					is NetworkResponse.Failure -> {
+						dummyText6.post {
+							dummyText6.text = "${response6.body}"
+						}
+					}
+				}
 			}
 		}
 	}
@@ -96,26 +126,61 @@ class MainActivity : AppCompatActivity() {
 	interface ApiService {
 
 		@GET("success")
-		suspend fun getSuccess(): GenericResponse<BaseResponse<Success>>
+		suspend fun getSuccess(): GenericResponse<SuccessResponse>
 
 		@GET("error")
-		suspend fun getError(): GenericResponse<BaseResponse<Error>>
+		suspend fun getError(): GenericResponse<ErrorResponse>
 
 		@GET("failure")
-		suspend fun getFailure(): GenericResponse<BaseResponse<Error>>
+		suspend fun getFailure(): GenericResponse<ErrorResponse>
+
 	}
 
-	private fun createRetrofit(moshi: Moshi, client: OkHttpClient): Retrofit {
+	interface ApiService2 {
+
+		@GET("success")
+		fun getSuccess(): FlowResponse<SuccessResponse>
+
+		@GET("error")
+		fun getError(): FlowResponse<ErrorResponse>
+
+		@GET("failure")
+		fun getFailure(): FlowResponse<ErrorResponse>
+
+	}
+
+	private fun createRetrofit(client: OkHttpClient): Retrofit {
 		return Retrofit.Builder()
 			.baseUrl("https://7dac5580-146f-4be7-a44f-e770ee8a9565.mock.pstmn.io/")
-			.addCallAdapterFactory(NetworkResponseAdapterFactory())
-			.addConverterFactory(MoshiConverterFactory.create(moshi))
+			.addCallAdapterFactory(NetworkAdapterFactory.create())
+			.addCallAdapterFactory(FlowCallAdapterFactory.create())
+			.addConverterFactory(MoshiConverterFactory.create())
 			.client(client)
 			.build()
 	}
 
-
 	companion object {
 		private val TAG = MainActivity::class.java.simpleName
+	}
+
+	private fun clearTexts() {
+		dummyText.post {
+			dummyText.text = ""
+		}
+		dummyText2.post {
+			dummyText2.text = ""
+		}
+		dummyText3.post {
+			dummyText3.text = ""
+		}
+		dummyText4.post {
+			dummyText4.text = ""
+		}
+		dummyText5.post {
+			dummyText5.text = ""
+		}
+		dummyText6.post {
+			dummyText6.text = ""
+		}
 	}
 }

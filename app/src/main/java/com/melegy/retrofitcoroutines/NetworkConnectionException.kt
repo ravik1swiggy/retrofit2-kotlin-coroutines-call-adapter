@@ -2,5 +2,5 @@ package com.melegy.retrofitcoroutines
 
 import java.io.IOException
 
-class NetworkConnectionException(message: String?) :
+data class NetworkConnectionException(override val message: String? = null) :
 	IOException(message)

@@ -4,7 +4,7 @@ import com.squareup.moshi.Json
 import com.squareup.moshi.JsonClass
 
 @JsonClass(generateAdapter = true)
-data class Success(
+data class SuccessResponse(
     @Json(name = "id")
     val id: String,
 
@@ -16,7 +16,7 @@ data class Success(
 )
 
 @JsonClass(generateAdapter = true)
-data class Error(
+data class ErrorResponse(
     @Json(name = "status")
     val status: String,
 

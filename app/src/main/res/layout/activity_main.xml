@@ -11,7 +11,6 @@
 		android:id="@+id/testButton"
 		android:layout_width="match_parent"
 		android:layout_height="wrap_content"
-		android:layout_marginTop="192dp"
 		android:text="Click Me"
 		app:layout_constraintHorizontal_bias="0.0"
 		app:layout_constraintLeft_toLeftOf="parent"
@@ -24,11 +23,10 @@
 		android:layout_height="wrap_content"
 		android:text="Dummy1 World!"
 		app:layout_constraintBottom_toBottomOf="parent"
-		app:layout_constraintHorizontal_bias="0.498"
 		app:layout_constraintLeft_toLeftOf="parent"
 		app:layout_constraintRight_toRightOf="parent"
 		app:layout_constraintTop_toBottomOf="@id/testButton"
-		app:layout_constraintVertical_bias="0.322" />
+		app:layout_constraintVertical_bias="0.071" />
 
 	<TextView
 		android:id="@+id/dummyText2"
@@ -36,11 +34,10 @@
 		android:layout_height="wrap_content"
 		android:text="Dummy2 World!"
 		app:layout_constraintBottom_toBottomOf="parent"
-		app:layout_constraintHorizontal_bias="0.501"
 		app:layout_constraintLeft_toLeftOf="parent"
 		app:layout_constraintRight_toRightOf="parent"
 		app:layout_constraintTop_toBottomOf="@id/dummyText"
-		app:layout_constraintVertical_bias="0.275" />
+		app:layout_constraintVertical_bias="0.076" />
 
 	<TextView
 		android:id="@+id/dummyText3"
@@ -48,10 +45,42 @@
 		android:layout_height="wrap_content"
 		android:text="Dummy3 World!"
 		app:layout_constraintBottom_toBottomOf="parent"
-		app:layout_constraintHorizontal_bias="0.501"
 		app:layout_constraintLeft_toLeftOf="parent"
 		app:layout_constraintRight_toRightOf="parent"
 		app:layout_constraintTop_toBottomOf="@id/dummyText2"
-		app:layout_constraintVertical_bias="0.321" />
+		app:layout_constraintVertical_bias="0.114" />
+
+	<TextView
+		android:id="@+id/dummyText4"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:text="Dummy4 World!"
+		app:layout_constraintBottom_toBottomOf="parent"
+		app:layout_constraintLeft_toLeftOf="parent"
+		app:layout_constraintRight_toRightOf="parent"
+		app:layout_constraintTop_toBottomOf="@id/dummyText3"
+		app:layout_constraintVertical_bias="0.115" />
+
+	<TextView
+		android:id="@+id/dummyText5"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:text="Dummy5 World!"
+		app:layout_constraintBottom_toBottomOf="parent"
+		app:layout_constraintLeft_toLeftOf="parent"
+		app:layout_constraintRight_toRightOf="parent"
+		app:layout_constraintTop_toBottomOf="@id/dummyText4"
+		app:layout_constraintVertical_bias="0.178" />
+
+	<TextView
+		android:id="@+id/dummyText6"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:text="Dummy6 World!"
+		app:layout_constraintBottom_toBottomOf="parent"
+		app:layout_constraintLeft_toLeftOf="parent"
+		app:layout_constraintRight_toRightOf="parent"
+		app:layout_constraintTop_toBottomOf="@id/dummyText5"
+		app:layout_constraintVertical_bias="0.199" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

@@ -15,7 +15,9 @@ class ApiRetryInterceptor(val context: Context) : Interceptor {
 	override fun intercept(chain: Interceptor.Chain): Response {
 		val originalRequest = chain.request()
 		if (!isNetworkAvailable(context)) {
-			throw NetworkConnectionException("Network NOT available")
+			throw NetworkConnectionException(
+				"Network NOT available"
+			)
 		}
 		return chain.proceed(originalRequest)
 	}

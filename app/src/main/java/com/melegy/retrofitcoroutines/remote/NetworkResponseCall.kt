@@ -2,6 +2,9 @@ package com.melegy.retrofitcoroutines.remote
 
 import com.melegy.retrofitcoroutines.BaseResponse
 import com.melegy.retrofitcoroutines.NetworkConnectionException
+import com.melegy.retrofitcoroutines.remote.NetworkAdapterFactory.Companion.ERROR_CODE_INTERNAL
+import com.melegy.retrofitcoroutines.remote.NetworkAdapterFactory.Companion.ERROR_CODE_INTERNAL_SECONDARY
+import com.melegy.retrofitcoroutines.remote.NetworkAdapterFactory.Companion.ERROR_CODE_THROTTLE
 import okhttp3.Request
 import okhttp3.ResponseBody
 import okio.Timeout
@@ -9,7 +12,6 @@ import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Converter
 import retrofit2.Response
-import java.io.IOException
 
 internal class NetworkResponseCall<S : BaseResponse<Any>, E : BaseResponse<Any>>(
 	private val delegate: Call<S>,
@@ -22,27 +24,61 @@ internal class NetworkResponseCall<S : BaseResponse<Any>, E : BaseResponse<Any>>
 				val body = response.body()
 				val code = response.code()
 				val error = response.errorBody()
-				if (response.isSuccessful) {
-					if (body?.isResponseOk() == true) {
-						callback.onResponse(
-							this@NetworkResponseCall,
-							Response.success(NetworkResponse.Success(body))
-						)
-					} else {
-						initErrorResponse(error, callback, body, code)
+				val internalError = Error.InternalError(
+					body?.statusTitle, body?.statusMessage, body?.statusCode
+				)
+				when {
+					code in setOf(
+						ERROR_CODE_INTERNAL,
+						ERROR_CODE_INTERNAL_SECONDARY
+					) -> initErrorResponse(error, callback, body, code, Error.InternalError())
+					code == ERROR_CODE_THROTTLE -> initErrorResponse(
+						error, callback, body, code, Error.ThrottleError()
+					)
+					response.isSuccessful -> {
+						when {
+							body?.isResponseOk() == true -> {
+								callback.onResponse(
+									this@NetworkResponseCall,
+									Response.success(NetworkResponse.success(body, code, false))
+								)
+							}
+							body?.isSessionInValid() == true -> {
+								initErrorResponse(
+									error, callback, body, code,
+									Error.ExpiredTokenError("Session expiry from api : ${request().url}")
+								)
+							}
+							else -> {
+								initErrorResponse(
+									error, callback, body, code, internalError
+								)
+							}
+						}
 					}
-				} else {
-					initErrorResponse(error, callback, body, code)
+					else -> {
+						initErrorResponse(
+							error, callback, body, code, internalError
+						)
+					}
 				}
 			}
 
 			override fun onFailure(call: Call<S>, throwable: Throwable) {
-				val networkResponse = when (throwable) {
-					is NetworkConnectionException -> NetworkResponse.NetworkError(throwable)
-					is IOException -> NetworkResponse.NetworkError(throwable)
-					else -> NetworkResponse.UnknownError(throwable)
+				val customError: Error = when (throwable) {
+					is NetworkConnectionException -> Error.NoNetworkError()
+					else -> Error.UnhandledExceptionError(throwable)
 				}
-				callback.onResponse(this@NetworkResponseCall, Response.success(networkResponse))
+				callback.onResponse(
+					this@NetworkResponseCall, Response.success(
+						NetworkResponse.failure(
+							error = customError,
+							body = null,
+							httpCode = null,
+							isCached = false
+						)
+					)
+				)
 			}
 		})
 	}
@@ -65,10 +101,11 @@ internal class NetworkResponseCall<S : BaseResponse<Any>, E : BaseResponse<Any>>
 
 	@Suppress("UNCHECKED_CAST")
 	private fun initErrorResponse(
-		error: ResponseBody?,
+		error: ResponseBody? = null,
 		callback: Callback<NetworkResponse<S, E>>,
-		body: S?,
-		code: Int
+		body: S? = null,
+		code: Int,
+		customError: Error
 	) {
 		val errorBody = when {
 			error == null -> null
@@ -82,9 +119,11 @@ internal class NetworkResponseCall<S : BaseResponse<Any>, E : BaseResponse<Any>>
 		callback.onResponse(
 			this@NetworkResponseCall,
 			Response.success(
-				NetworkResponse.ApiError(
-					errorBody ?: body as? E,
-					code
+				NetworkResponse.failure(
+					error = customError,
+					body = errorBody ?: body as? E,
+					httpCode = code,
+					isCached = false
 				)
 			)
 		)
