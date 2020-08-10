@@ -53,4 +53,5 @@ dependencies {
     kapt "com.squareup.moshi:moshi-kotlin-codegen:1.9.2"
 	debugImplementation 'com.squareup.leakcanary:leakcanary-android:2.4'
 	implementation 'com.squareup.leakcanary:plumber-android:2.4'
+	implementation 'com.orhanobut:logger:2.2.0'
 }
