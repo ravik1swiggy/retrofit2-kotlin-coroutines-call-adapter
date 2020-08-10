@@ -19,10 +19,7 @@ class MainActivity : AppCompatActivity() {
 	override fun onCreate(savedInstanceState: Bundle?) {
 		super.onCreate(savedInstanceState)
 		setContentView(R.layout.activity_main)
-		val okHttpClient = OkHttpClient.Builder()
-			.addInterceptor(ApiRetryInterceptor(this))
-			.addInterceptor(HttpLoggingInterceptor().setLevel(HttpLoggingInterceptor.Level.BODY))
-			.build()
+		val okHttpClient = initOkHttpClient()
 		val retrofit = createRetrofit(okHttpClient)
 		val service = retrofit.create<ApiService>()
 		val service2 = retrofit.create<ApiService2>()
@@ -159,28 +156,17 @@ class MainActivity : AppCompatActivity() {
 			.build()
 	}
 
-	companion object {
-		private val TAG = MainActivity::class.java.simpleName
-	}
+	private fun initOkHttpClient() = OkHttpClient.Builder()
+		.addInterceptor(ApiRetryInterceptor(this))
+		.addInterceptor(HttpLoggingInterceptor().setLevel(HttpLoggingInterceptor.Level.BODY))
+		.build()
 
 	private fun clearTexts() {
-		dummyText.post {
-			dummyText.text = ""
-		}
-		dummyText2.post {
-			dummyText2.text = ""
-		}
-		dummyText3.post {
-			dummyText3.text = ""
-		}
-		dummyText4.post {
-			dummyText4.text = ""
-		}
-		dummyText5.post {
-			dummyText5.text = ""
-		}
-		dummyText6.post {
-			dummyText6.text = ""
-		}
+		dummyText.post { dummyText.text = "" }
+		dummyText2.post { dummyText2.text = "" }
+		dummyText3.post { dummyText3.text = "" }
+		dummyText4.post { dummyText4.text = "" }
+		dummyText5.post { dummyText5.text = "" }
+		dummyText6.post { dummyText6.text = "" }
 	}
 }
