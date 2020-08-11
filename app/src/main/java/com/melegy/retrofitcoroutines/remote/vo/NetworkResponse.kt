@@ -12,11 +12,11 @@ sealed class NetworkResponse<out T : Any, out U : Any> {
 	object Loading : NetworkResponse<Nothing, Nothing>()
 
 	data class Success<T : Any>(
-		val data: T? = null, val httpStatusCode: Int? = null, val isCached: Boolean? = null
+		val response: T? = null, val httpStatusCode: Int? = null, val isCached: Boolean? = null
 	) : NetworkResponse<T, Nothing>()
 
 	data class Failure<U : Any>(
-		val error: Error, val data: U? = null, val httpStatusCode: Int? = null,
+		val error: Error, val response: U? = null, val httpStatusCode: Int? = null,
 		val isCached: Boolean? = null
 	) : NetworkResponse<Nothing, U>()
 
@@ -35,8 +35,8 @@ sealed class NetworkResponse<out T : Any, out U : Any> {
 
 	override fun toString(): String {
 		return when (this) {
-			is Success -> "Success[data=$data,httpStatusCode=$httpStatusCode,isCached=$isCached]"
-			is Failure -> "Failure[error$error,data=$data,,httpStatusCode=$httpStatusCode,isCached=$isCached]"
+			is Success -> "Success[response=$response,httpStatusCode=$httpStatusCode,isCached=$isCached]"
+			is Failure -> "Failure[error$error,response=$response,,httpStatusCode=$httpStatusCode,isCached=$isCached]"
 			Loading -> "Loading"
 		}
 	}

@@ -4,7 +4,7 @@ import com.squareup.moshi.Json
 import com.squareup.moshi.JsonClass
 
 @JsonClass(generateAdapter = true)
-data class BaseResponse<T>(
+data class BaseResponse<out T : Any>(
 	@Json(name = "statusCode")
 	val statusCode: Int = -1,
 

@@ -1,97 +1,75 @@
 package com.melegy.retrofitcoroutines.remote
 
-import com.melegy.retrofitcoroutines.remote.vo.Response
+import com.melegy.retrofitcoroutines.BaseResponse
 import com.melegy.retrofitcoroutines.IDispatchProvider
 import com.melegy.retrofitcoroutines.remote.vo.Error
-import com.orhanobut.logger.Logger
+import com.melegy.retrofitcoroutines.remote.vo.Response
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*
 
-/*@OptIn(ExperimentalCoroutinesApi::class)
-inline fun <DB : Any, REMOTE : Any> networkBoundResource(
-	crossinline fetchFromLocal: () -> Flow<DB>,
-	crossinline shouldFetchFromRemote: (DB?) -> Boolean = { true },
-	crossinline fetchFromRemote: () -> Flow<CustomResponse<REMOTE>>,
-	crossinline processRemoteResponse: (response: CustomResponse<REMOTE>) -> Unit = { Unit },
-	crossinline saveRemoteData: (REMOTE) -> Unit = { Unit },
-	crossinline onFetchFailed: Error.() -> Unit = { },
-	crossinline coroutineDispatcher: () -> CoroutineDispatcher = { IDispatchProvider.get().io }
-): Flow<CustomResponse<DB>> = flow {
-	emit(CustomResponse.loading())
-	val localData = fetchFromLocal().first()
-	if (shouldFetchFromRemote(localData)) {
-		emit(CustomResponse.loading())
-		fetchFromRemote().collect { apiResponse ->
-			when (apiResponse) {
-				CustomResponse.Loading -> TODO()
-				is CustomResponse.Success -> {
-					processRemoteResponse(apiResponse)
-					apiResponse.response?.let { saveRemoteData(it) }
-					emitAll(fetchFromLocal().map { dbData ->
-						CustomResponse.success(dbData)
-					})
-				}
-				is CustomResponse.Failure -> {
-					onFetchFailed(apiResponse.error)
-					emitAll(fetchFromLocal().map {
-						CustomResponse.failure<DB>(
-							apiResponse.error
-						)
-					})
-				}
-			}
-		}
-	} else {
-		emitAll(fetchFromLocal().map { CustomResponse.success(it) })
-	}
-}.flowOn(coroutineDispatcher.invoke())*/
-
+@Suppress("UNCHECKED_CAST")
 @OptIn(ExperimentalCoroutinesApi::class)
-inline fun <DB : Any, REMOTE : Any> networkBoundResource(
-	crossinline fetchFromLocal: () -> Flow<DB> = { emptyFlow() },
-	crossinline shouldCache: () -> Boolean = { true },
-	crossinline shouldFetchFromRemote: () -> Boolean = { true },
-	crossinline fetchFromRemote: () -> Flow<Response<REMOTE>>,
-	crossinline processRemoteResponse: (response: Response<REMOTE>) -> Unit = { },
-	crossinline saveRemoteData: (REMOTE) -> Unit = { },
-	crossinline onFetchFailed: Error.() -> Unit = { },
-	crossinline coroutineDispatcher: () -> CoroutineDispatcher = { IDispatchProvider.get().io }
-//	crossinline errorResolver: () -> Pair<IErrorChecker<REMOTE>, ITransformer<REMOTE, Error>>? = { null },
-//	crossinline modelTransformer: () -> ITransformer<REMOTE, TRANS>? = { null }
+fun <DB : Any, REMOTE : Any> networkBoundResource(
+	fetchFromLocal: () -> Flow<DB> = { emptyFlow() },
+	shouldCache: () -> Boolean = { true },
+	shouldFetchFromRemote: (DB?) -> Boolean = { it == null },
+	fetchFromRemote: () -> Flow<Response<BaseResponse<REMOTE>>>,
+	processRemoteResponse: (response: REMOTE?) -> Unit = {},
+	saveRemoteData: suspend (REMOTE) -> Unit = {},
+	onFetchFailed: Error.() -> Unit = {},
+	coroutineDispatcher: () -> CoroutineDispatcher = { IDispatchProvider.get().io }
 ): Flow<Response<DB>> = flow {
 	emit(Response.loading())
-	val storeLocal = shouldCache.invoke()
-	val localData = try {
-		if (storeLocal) fetchFromLocal().first() else null
-	} catch (e: Exception) {
-		Logger.e("NBR $e")
-	}
-	if (shouldFetchFromRemote()) {
+	val storeCache = shouldCache()
+	val localData = if (storeCache) fetchFromLocal().first() else null
+	if (shouldFetchFromRemote(localData) || !storeCache) {
 		emit(Response.loading())
 		fetchFromRemote().collect { apiResponse ->
 			when (apiResponse) {
-				Response.Loading -> TODO()
+				Response.Loading -> emit(Response.loading())
 				is Response.Success -> {
-					processRemoteResponse(apiResponse)
-					apiResponse.data?.let { saveRemoteData(it) }
-					emitAll(fetchFromLocal().map { dbData ->
-						Response.success(dbData)
-					})
+					processRemoteResponse(apiResponse.response?.data)
+					if (storeCache) {
+						try {
+							apiResponse.response?.data?.let {
+								saveRemoteData(it)
+							}
+							emitAll(fetchFromLocal().map { dbData ->
+								Response.success(dbData, isCached = false)
+							})
+						} catch (e: Exception) {
+							onFetchFailed(Error.UnhandledExceptionError(e))
+							emit(
+								Response.success(
+									apiResponse.response?.data as? DB,
+									isCached = false
+								)
+							)
+						}
+					} else {
+						emit(Response.success(apiResponse.response?.data as? DB, isCached = false))
+					}
 				}
 				is Response.Failure -> {
 					onFetchFailed(apiResponse.error)
-					emitAll(fetchFromLocal().map {
-						Response.failure<DB>(
-							apiResponse.error
+					if (storeCache) {
+						emitAll(fetchFromLocal().map {
+							Response.failure(apiResponse.error, data = it)
+						})
+					} else {
+						emit(
+							Response.failure(
+								apiResponse.error, data = apiResponse.response as? DB
+							)
 						)
-					})
+					}
 				}
 			}
 		}
 	} else {
-		if (storeLocal) {
-			emitAll(fetchFromLocal().map { Response.success(it) })
+		if (storeCache) {
+			emitAll(fetchFromLocal().map { Response.success(it, isCached = true) })
 		} else {
 			Response.success(localData)
 		}

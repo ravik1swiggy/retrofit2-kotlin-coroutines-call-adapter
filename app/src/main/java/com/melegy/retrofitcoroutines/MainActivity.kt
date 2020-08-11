@@ -1,17 +1,21 @@
 package com.melegy.retrofitcoroutines
 
+import android.annotation.SuppressLint
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
 import com.melegy.retrofitcoroutines.remote.factory.CoroutineNetworkResponseAdapterFactory
 import com.melegy.retrofitcoroutines.remote.factory.CoroutineResponseAdapterFactory
 import com.melegy.retrofitcoroutines.remote.factory.FlowNetworkResponseCallAdapterFactory
 import com.melegy.retrofitcoroutines.remote.factory.FlowResponseCallAdapterFactory
+import com.melegy.retrofitcoroutines.remote.networkBoundResource
 import com.melegy.retrofitcoroutines.remote.vo.*
+import com.melegy.retrofitcoroutines.room.Quote
 import com.melegy.retrofitcoroutines.room.QuoteDatabase
 import com.melegy.retrofitcoroutines.room.QuoteResponse
 import kotlinx.android.synthetic.main.activity_main.*
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import okhttp3.OkHttpClient
@@ -83,33 +87,34 @@ class MainActivity : AppCompatActivity() {
 					}
 				}
 			}*/
-			when (val response2 = service.getRandom()) {
+			/*when (val response = service.getRandom()) {
 				is NetworkResponse.Success -> {
 					dummyText2.post {
-						dummyText2.text = "${response2.data}"
+						dummyText2.text = "${response.data}"
 					}
 				}
 				is NetworkResponse.Failure -> {
 					dummyText2.post {
-						dummyText2.text = "${response2.data}"
+						dummyText2.text = "${response.data}"
 					}
 				}
 			}
-			when (val response3 = service.getRandom2()) {
+			when (val response = service.getRandom2()) {
 				is Response.Success -> {
 					dummyText3.post {
-						dummyText3.text = "${response3.data}"
+						dummyText3.text = "${response.data}"
 					}
 				}
 				is Response.Failure -> {
 					dummyText3.post {
-						dummyText3.text = "${response3.data}"
+						dummyText3.text = "${response.data}"
 					}
 				}
-			}
+			}*/
 		}
 	}
 
+	@SuppressLint("SetTextI18n")
 	private fun initServiceNetworkCall2() {
 		GlobalScope.launch {
 			/*service2.getSuccess().collect {
@@ -154,35 +159,82 @@ class MainActivity : AppCompatActivity() {
 					}
 				}
 			}*/
-			service2.getRandom().collect {
-				when (val response5 = it) {
+			/*service2.getRandom().collect {
+				when (val response = it) {
 					is NetworkResponse.Success -> {
 						dummyText5.post {
-							dummyText5.text = "${response5.data}"
+							dummyText5.text = "${response.data}"
 						}
 					}
 					is NetworkResponse.Failure -> {
 						dummyText5.post {
-							dummyText5.text = "${response5.data}"
+							dummyText5.text = "${response.data}"
 						}
 					}
 				}
 			}
 			service2.getRandom2().collect {
-				when (val response6 = it) {
+				when (val response = it) {
 					is Response.Success -> {
 						dummyText6.post {
-							dummyText6.text = "${response6.data}"
+							dummyText6.text = "${response.data}"
 						}
 					}
 					is Response.Failure -> {
 						dummyText6.post {
-							dummyText6.text = "${response6.data}"
+							dummyText6.text = "${response.data}"
+						}
+					}
+				}
+			}*/
+			getRandomQuoteNoCache().collect {
+				when (val response = it) {
+					is Response.Success -> {
+						dummyText4.post {
+							dummyText4.text =
+								"Success isCached ${response.isCached} Response ${response.response}"
+						}
+					}
+					is Response.Failure -> {
+						dummyText4.post {
+							dummyText4.text = "Failure ${response.response}"
+						}
+					}
+				}
+			}
+			getRandomQuote().collect {
+				when (val response = it) {
+					is Response.Success -> {
+						dummyText5.post {
+							dummyText5.text =
+								"Success isCached ${response.isCached} Response ${response.response}"
+						}
+					}
+					is Response.Failure -> {
+						dummyText5.post {
+							dummyText5.text = "Failure ${response.response}"
 						}
 					}
 				}
 			}
 		}
+	}
+
+	@ExperimentalCoroutinesApi
+	fun getRandomQuote(): Flow<Response<Quote>> {
+		return networkBoundResource(
+			fetchFromLocal = { quoteDao.getQuote() },
+			fetchFromRemote = { service2.getRandom3() },
+			saveRemoteData = { quoteDao.insertOrUpdateQuote(it) }
+		)
+	}
+
+	@ExperimentalCoroutinesApi
+	fun getRandomQuoteNoCache(): Flow<Response<QuoteResponse>> {
+		return networkBoundResource(
+			fetchFromRemote = { service2.getRandom2() },
+			shouldCache = { false }
+		)
 	}
 
 	interface ApiService {
@@ -220,6 +272,9 @@ class MainActivity : AppCompatActivity() {
 
 		@GET("random")
 		fun getRandom2(): FlowResponse<QuoteResponse>
+
+		@GET("random")
+		fun getRandom3(): FlowResponse<Quote>
 
 	}
 
