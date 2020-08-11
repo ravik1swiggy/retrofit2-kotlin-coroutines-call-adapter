@@ -10,15 +10,15 @@ import kotlinx.coroutines.flow.*
 
 @Suppress("UNCHECKED_CAST")
 @OptIn(ExperimentalCoroutinesApi::class)
-fun <DB : Any, REMOTE : Any> networkBoundResource(
-	fetchFromLocal: () -> Flow<DB> = { emptyFlow() },
-	shouldCache: () -> Boolean = { true },
-	shouldFetchFromRemote: (DB?) -> Boolean = { it == null },
-	fetchFromRemote: () -> Flow<Response<BaseResponse<REMOTE>>>,
-	processRemoteResponse: (response: REMOTE?) -> Unit = {},
-	saveRemoteData: suspend (REMOTE) -> Unit = {},
-	onFetchFailed: Error.() -> Unit = {},
-	coroutineDispatcher: () -> CoroutineDispatcher = { IDispatchProvider.get().io }
+inline fun <DB : Any, REMOTE : Any> networkBoundResource(
+	crossinline fetchFromLocal: () -> Flow<DB> = { emptyFlow() },
+	crossinline shouldCache: () -> Boolean = { true },
+	crossinline shouldFetchFromRemote: (DB?) -> Boolean = { it == null },
+	crossinline fetchFromRemote: () -> Flow<Response<BaseResponse<REMOTE>>>,
+	crossinline processRemoteResponse: (response: REMOTE?) -> Unit = { },
+	crossinline saveRemoteData: (REMOTE) -> Unit = { },
+	crossinline onFetchFailed: Error.() -> Unit = { },
+	crossinline coroutineDispatcher: () -> CoroutineDispatcher = { IDispatchProvider.get().io }
 ): Flow<Response<DB>> = flow {
 	emit(Response.loading())
 	val storeCache = shouldCache()
