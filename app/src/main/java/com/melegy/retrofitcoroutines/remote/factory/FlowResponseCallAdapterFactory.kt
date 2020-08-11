@@ -1,6 +1,8 @@
-package com.melegy.retrofitcoroutines.remote
+package com.melegy.retrofitcoroutines.remote.factory
 
 import com.melegy.retrofitcoroutines.BaseResponse
+import com.melegy.retrofitcoroutines.remote.calladapter.FlowResponseCallAdapter
+import com.melegy.retrofitcoroutines.remote.vo.Response
 import kotlinx.coroutines.flow.Flow
 import retrofit2.CallAdapter
 import retrofit2.Retrofit
@@ -10,12 +12,12 @@ import java.lang.reflect.Type
 /**
  * Created by ravi on 09/08/20.
  */
-class FlowCallAdapterFactory private constructor() : CallAdapter.Factory() {
+class FlowResponseCallAdapterFactory private constructor() : CallAdapter.Factory() {
 
 	companion object {
 		@JvmStatic
 		fun create() =
-			FlowCallAdapterFactory()
+			FlowResponseCallAdapterFactory()
 	}
 
 	override fun get(
@@ -30,23 +32,15 @@ class FlowCallAdapterFactory private constructor() : CallAdapter.Factory() {
 			"Flow return type must be parameterized as Flow<Foo> or Flow<out Foo>"
 		}
 		val responseType = getParameterUpperBound(0, returnType)
-		if (getRawType(responseType) != NetworkResponse::class.java) {
+		if (getRawType(responseType) != Response::class.java) {
 			return null
 		}
 		check(responseType is ParameterizedType) {
 			"Response must be parameterized as Response<Foo> or Response<out Foo>"
 		}
 		val successBodyType = getParameterUpperBound(0, responseType)
-		val errorBodyType = getParameterUpperBound(1, responseType)
-		val errorBodyConverter =
-			retrofit.nextResponseBodyConverter<BaseResponse<Any>>(
-				null,
-				errorBodyType,
-				annotations
-			)
-		return FlowCallAdapter<BaseResponse<Any>, BaseResponse<Any>>(
-			successBodyType,
-			errorBodyConverter
+		return FlowResponseCallAdapter<BaseResponse<Any>>(
+			successBodyType
 		)
 	}
 }

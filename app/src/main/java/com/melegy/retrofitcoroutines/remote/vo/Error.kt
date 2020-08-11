@@ -1,4 +1,4 @@
-package com.melegy.retrofitcoroutines.remote
+package com.melegy.retrofitcoroutines.remote.vo
 
 sealed class Error(val tid: String? = null, val sid: String? = null) {
 	class BlackZoneError(val title: String?, val message: String?, tid: String?, sid: String?) : Error(tid, sid)

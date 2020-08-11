@@ -1,6 +1,8 @@
-package com.melegy.retrofitcoroutines.remote
+package com.melegy.retrofitcoroutines.remote.calladapter
 
 import com.melegy.retrofitcoroutines.BaseResponse
+import com.melegy.retrofitcoroutines.remote.vo.NetworkResponse
+import com.melegy.retrofitcoroutines.remote.retrofitcall.NetworkResponseCall
 import okhttp3.ResponseBody
 import retrofit2.Call
 import retrofit2.CallAdapter
@@ -14,8 +16,6 @@ class NetworkResponseAdapter<S : BaseResponse<Any>, E : BaseResponse<Any>>(
 
 	override fun responseType(): Type = successType
 
-	override fun adapt(call: Call<S>): Call<NetworkResponse<S, E>> {
-		return NetworkResponseCall(call, errorBodyConverter)
-	}
+	override fun adapt(call: Call<S>): Call<NetworkResponse<S, E>> =
+		NetworkResponseCall(call, errorBodyConverter)
 }
-
