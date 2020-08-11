@@ -1,7 +1,7 @@
 package com.melegy.retrofitcoroutines.remote.factory
 
 import com.melegy.retrofitcoroutines.BaseResponse
-import com.melegy.retrofitcoroutines.remote.calladapter.FlowCallAdapter
+import com.melegy.retrofitcoroutines.remote.calladapter.FlowNetworkResponseCallAdapter
 import com.melegy.retrofitcoroutines.remote.vo.NetworkResponse
 import kotlinx.coroutines.flow.Flow
 import retrofit2.CallAdapter
@@ -12,12 +12,12 @@ import java.lang.reflect.Type
 /**
  * Created by ravi on 09/08/20.
  */
-class FlowCallAdapterFactory private constructor() : CallAdapter.Factory() {
+class FlowNetworkResponseCallAdapterFactory private constructor() : CallAdapter.Factory() {
 
 	companion object {
 		@JvmStatic
 		fun create() =
-			FlowCallAdapterFactory()
+			FlowNetworkResponseCallAdapterFactory()
 	}
 
 	override fun get(
@@ -42,11 +42,9 @@ class FlowCallAdapterFactory private constructor() : CallAdapter.Factory() {
 		val errorBodyType = getParameterUpperBound(1, responseType)
 		val errorBodyConverter =
 			retrofit.nextResponseBodyConverter<BaseResponse<Any>>(
-				null,
-				errorBodyType,
-				annotations
+				null, errorBodyType, annotations
 			)
-		return FlowCallAdapter<BaseResponse<Any>, BaseResponse<Any>>(
+		return FlowNetworkResponseCallAdapter<BaseResponse<Any>, BaseResponse<Any>>(
 			successBodyType,
 			errorBodyConverter
 		)

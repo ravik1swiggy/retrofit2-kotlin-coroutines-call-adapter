@@ -12,12 +12,12 @@ import java.lang.reflect.Type
 /**
  * Created by ravi on 09/08/20.
  */
-class CoroutineNetworkAdapterFactory private constructor() : CallAdapter.Factory() {
+class CoroutineNetworkResponseAdapterFactory private constructor() : CallAdapter.Factory() {
 
 	companion object {
 		@JvmStatic
 		fun create() =
-			CoroutineNetworkAdapterFactory()
+			CoroutineNetworkResponseAdapterFactory()
 
 		const val ERROR_CODE_INTERNAL = 503
 		const val ERROR_CODE_INTERNAL_SECONDARY = 403
