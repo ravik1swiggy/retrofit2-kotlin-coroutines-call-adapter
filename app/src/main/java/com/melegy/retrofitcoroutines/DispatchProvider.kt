@@ -4,6 +4,7 @@ import com.orhanobut.logger.Logger
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 
 /**
  * Created by ravi on 15/05/20.
@@ -19,7 +20,28 @@ object DispatchProvider : IDispatchProvider {
 			Logger.e("${cx.javaClass.simpleName} $exception ${this.hashCode()} ")
 		}
 	}
+	fun test() {
+		val t = object :IDispatchProvider{
+			override val ui: CoroutineDispatcher
+				get() = TODO("Not yet implemented")
+			override val io: CoroutineDispatcher
+				get() = TODO("Not yet implemented")
+			override val default: CoroutineDispatcher
+				get() = TODO("Not yet implemented")
+			override val unconfined: CoroutineDispatcher
+				get() = TODO("Not yet implemented")
+			override val mainImmediate: CoroutineDispatcher
+				get() = TODO("Not yet implemented")
+			override val exceptionHandler: CoroutineExceptionHandler
+				get() = TODO("Not yet implemented")
+
+		}
+	}
 }
+
+val dispatchProvider by lazy { IDispatchProvider.get() }
+val supervisorJob by lazy { SupervisorJob() }
+val exceptionHandler: CoroutineExceptionHandler by lazy { dispatchProvider.exceptionHandler }
 
 interface IDispatchProvider {
 	companion object :

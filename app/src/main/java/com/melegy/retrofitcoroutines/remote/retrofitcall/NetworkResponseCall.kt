@@ -3,7 +3,7 @@ package com.melegy.retrofitcoroutines.remote.retrofitcall
 import com.melegy.retrofitcoroutines.BaseResponse
 import com.melegy.retrofitcoroutines.NetworkConnectionException
 import com.melegy.retrofitcoroutines.remote.vo.Error
-import com.melegy.retrofitcoroutines.remote.vo.NetworkResponse
+import com.melegy.retrofitcoroutines.remote.vo.ResponseV2
 import com.melegy.retrofitcoroutines.remote.factory.CoroutineNetworkResponseAdapterFactory.Companion.ERROR_CODE_INTERNAL
 import com.melegy.retrofitcoroutines.remote.factory.CoroutineNetworkResponseAdapterFactory.Companion.ERROR_CODE_INTERNAL_SECONDARY
 import com.melegy.retrofitcoroutines.remote.factory.CoroutineNetworkResponseAdapterFactory.Companion.ERROR_CODE_THROTTLE
@@ -18,9 +18,9 @@ import retrofit2.Response
 internal class NetworkResponseCall<S : BaseResponse<Any>, E : BaseResponse<Any>>(
 	private val delegate: Call<S>,
 	private val errorConverter: Converter<ResponseBody, E>
-) : Call<NetworkResponse<S, E>> {
+) : Call<ResponseV2<S, E>> {
 
-	override fun enqueue(callback: Callback<NetworkResponse<S, E>>) {
+	override fun enqueue(callback: Callback<ResponseV2<S, E>>) {
 		return delegate.enqueue(object : Callback<S> {
 			override fun onResponse(call: Call<S>, response: Response<S>) {
 				val body = response.body()
@@ -47,7 +47,7 @@ internal class NetworkResponseCall<S : BaseResponse<Any>, E : BaseResponse<Any>>
 							body?.isResponseOk() == true -> {
 								callback.onResponse(
 									this@NetworkResponseCall,
-									Response.success(NetworkResponse.success(body, code, false))
+									Response.success(ResponseV2.success(body, code, false))
 								)
 							}
 							body?.isSessionInValid() == true -> {
@@ -82,7 +82,7 @@ internal class NetworkResponseCall<S : BaseResponse<Any>, E : BaseResponse<Any>>
 				}
 				callback.onResponse(
 					this@NetworkResponseCall, Response.success(
-						NetworkResponse.failure(error = customError, isCached = false)
+						ResponseV2.failure(error = customError, isCached = false)
 					)
 				)
 			}
@@ -97,7 +97,7 @@ internal class NetworkResponseCall<S : BaseResponse<Any>, E : BaseResponse<Any>>
 
 	override fun cancel() = delegate.cancel()
 
-	override fun execute(): Response<NetworkResponse<S, E>> =
+	override fun execute(): Response<ResponseV2<S, E>> =
 		throw UnsupportedOperationException("NetworkResponseCall doesn't support execute")
 
 	override fun request(): Request = delegate.request()
@@ -106,11 +106,11 @@ internal class NetworkResponseCall<S : BaseResponse<Any>, E : BaseResponse<Any>>
 
 	@Suppress("UNCHECKED_CAST")
 	private fun initErrorResponse(
-		error: ResponseBody? = null,
-		callback: Callback<NetworkResponse<S, E>>,
-		body: S? = null,
-		code: Int,
-		customError: Error
+        error: ResponseBody? = null,
+        callback: Callback<ResponseV2<S, E>>,
+        body: S? = null,
+        code: Int,
+        customError: Error
 	) {
 		val errorBody = when {
 			error == null -> null
@@ -124,7 +124,7 @@ internal class NetworkResponseCall<S : BaseResponse<Any>, E : BaseResponse<Any>>
 		callback.onResponse(
 			this@NetworkResponseCall,
 			Response.success(
-				NetworkResponse.failure(
+				ResponseV2.failure(
 					error = customError,
 					body = errorBody ?: body as? E,
 					httpCode = code,

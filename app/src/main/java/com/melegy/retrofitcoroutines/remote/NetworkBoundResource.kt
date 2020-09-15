@@ -1,77 +1,93 @@
 package com.melegy.retrofitcoroutines.remote
 
-import com.melegy.retrofitcoroutines.BaseResponse
-import com.melegy.retrofitcoroutines.IDispatchProvider
+import com.melegy.retrofitcoroutines.dispatchProvider
 import com.melegy.retrofitcoroutines.remote.vo.Error
 import com.melegy.retrofitcoroutines.remote.vo.Response
-import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.ExperimentalCoroutinesApi
+import com.melegy.retrofitcoroutines.transformers.FlowModelTransformer
+import com.orhanobut.logger.Logger
 import kotlinx.coroutines.flow.*
+import okhttp3.ResponseBody
 
 @Suppress("UNCHECKED_CAST")
-@OptIn(ExperimentalCoroutinesApi::class)
 inline fun <DB : Any, REMOTE : Any> networkBoundResource(
 	crossinline fetchFromLocal: () -> Flow<DB> = { emptyFlow() },
 	crossinline shouldCache: () -> Boolean = { true },
-	crossinline shouldFetchFromRemote: (DB?) -> Boolean = { it == null },
-	crossinline fetchFromRemote: () -> Flow<Response<BaseResponse<REMOTE>>>,
+	crossinline shouldFetchFromRemote: suspend (DB?) -> Boolean = { it == null },
+	crossinline fetchFromRemote: () -> Flow<Response<REMOTE>>,
 	crossinline processRemoteResponse: (response: REMOTE?) -> Unit = { },
 	crossinline saveRemoteData: (REMOTE) -> Unit = { },
-	crossinline onFetchFailed: Error.() -> Unit = { },
-	crossinline coroutineDispatcher: () -> CoroutineDispatcher = { IDispatchProvider.get().io }
+	crossinline onFetchFailed: suspend () -> Unit = { }
 ): Flow<Response<DB>> = flow {
-	emit(Response.loading())
-	val storeCache = shouldCache()
-	val localData = if (storeCache) fetchFromLocal().first() else null
-	if (shouldFetchFromRemote(localData) || !storeCache) {
-		emit(Response.loading())
+	val fetchFromCache = shouldCache()
+	val localData = if (fetchFromCache) fetchFromLocal().firstOrNull() else null
+	if (shouldFetchFromRemote(localData) || !fetchFromCache) {
 		fetchFromRemote().collect { apiResponse ->
 			when (apiResponse) {
-				Response.Loading -> emit(Response.loading())
 				is Response.Success -> {
-					processRemoteResponse(apiResponse.response?.data)
-					if (storeCache) {
-						try {
-							apiResponse.response?.data?.let {
-								saveRemoteData(it)
-							}
-							emitAll(fetchFromLocal().map { dbData ->
-								Response.success(dbData, isCached = false)
-							})
-						} catch (e: Exception) {
-							onFetchFailed(Error.UnhandledExceptionError(e))
-							emit(
-								Response.success(
-									apiResponse.response?.data as? DB,
-									isCached = false
-								)
-							)
-						}
+					processRemoteResponse(apiResponse.response)
+					if (fetchFromCache && apiResponse.response != null) {
+						saveRemoteData(apiResponse.response)
+						emitAll(fetchFromLocal().map { Response.success(it, isCached = true) })
 					} else {
-						emit(Response.success(apiResponse.response?.data as? DB, isCached = false))
+						emit(Response.success(apiResponse.response as DB, isCached = false))
 					}
 				}
 				is Response.Failure -> {
-					onFetchFailed(apiResponse.error)
-					if (storeCache) {
-						emitAll(fetchFromLocal().map {
-							Response.failure(apiResponse.error, data = it)
-						})
-					} else {
-						emit(
-							Response.failure(
-								apiResponse.error, data = apiResponse.response as? DB
-							)
-						)
-					}
+					onFetchFailed()
+					emit(apiResponse as Response.Failure)
 				}
 			}
 		}
 	} else {
-		if (storeCache) {
-			emitAll(fetchFromLocal().map { Response.success(it, isCached = true) })
-		} else {
-			Response.success(localData)
-		}
+		emitAll(fetchFromLocal().map { Response.success(it, isCached = true) })
 	}
-}.flowOn(coroutineDispatcher.invoke())
+}.flowOn(dispatchProvider.io)
+	.catch {
+		Logger.e("catch $it ${it.message}")
+		onFetchFailed()
+		emit(Response.failure(Error.UnhandledExceptionError(it, it.message)))
+	}
+
+@Suppress("UNCHECKED_CAST")
+fun <R, M> buildResponse(
+	call: Flow<retrofit2.Response<R>>,
+	modelTransformer: FlowModelTransformer<R, M>? = null
+): Flow<Response<M>> {
+	return call.transform {
+		val response = it
+		val body = response.body()
+		val code = response.code()
+		if (body != null && response.isSuccessful) {
+			modelTransformer?.let { transformer -> emitAll(transformer(body)) }
+				?: emit(Response.success(body as? M, httpStatusCode = code))
+		} else {
+			emit(buildFailureResponse(response, body, response.errorBody()))
+		}
+	}.catch {
+		emit(
+			Response.Failure(
+				Error.UnhandledExceptionError(
+					it, it.message
+						?: "exception-transformer-$it"
+				)
+			)
+		)
+	}
+}
+
+const val MESSAGE_NULL_RESPONSE_BODY = "null_response_body"
+const val MESSAGE_UNSUCCESSFUL_RESPONSE = "unsuccessful_response"
+
+fun <R> buildFailureResponse(
+	response: retrofit2.Response<R>,
+	body: R? = null,
+	errorBody: ResponseBody? = null
+): Response.Failure {
+	val error =
+		Error.UnhandledError(if (body == null) MESSAGE_NULL_RESPONSE_BODY else MESSAGE_UNSUCCESSFUL_RESPONSE)
+	return Response.Failure(error, body ?: errorBody, response.code())
+}
+
+inline fun <T> foo(crossinline coroutine: suspend () -> T): Flow<T> {
+	return flow { emit(coroutine()) }
+}

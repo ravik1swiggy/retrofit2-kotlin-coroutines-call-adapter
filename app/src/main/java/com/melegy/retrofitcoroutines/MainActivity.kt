@@ -1,20 +1,21 @@
 package com.melegy.retrofitcoroutines
 
+import com.melegy.retrofitcoroutines.remote.vo.RateLimiter
 import android.annotation.SuppressLint
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
-import com.melegy.retrofitcoroutines.remote.factory.CoroutineNetworkResponseAdapterFactory
-import com.melegy.retrofitcoroutines.remote.factory.CoroutineResponseAdapterFactory
-import com.melegy.retrofitcoroutines.remote.factory.FlowNetworkResponseCallAdapterFactory
-import com.melegy.retrofitcoroutines.remote.factory.FlowResponseCallAdapterFactory
+import androidx.lifecycle.lifecycleScope
+import com.melegy.retrofitcoroutines.remote.buildResponse
+import com.melegy.retrofitcoroutines.remote.factory.FlowCallAdapterFactory.Companion.flowCallAdapterFactory
 import com.melegy.retrofitcoroutines.remote.networkBoundResource
-import com.melegy.retrofitcoroutines.remote.vo.*
+import com.melegy.retrofitcoroutines.remote.vo.FlowRetroResponse
+import com.melegy.retrofitcoroutines.remote.vo.Response
 import com.melegy.retrofitcoroutines.room.Quote
 import com.melegy.retrofitcoroutines.room.QuoteDatabase
 import com.melegy.retrofitcoroutines.room.QuoteResponse
+import com.melegy.retrofitcoroutines.transformers.QuoteTransformer
+import com.orhanobut.logger.Logger
 import kotlinx.android.synthetic.main.activity_main.*
-import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
@@ -25,7 +26,6 @@ import retrofit2.converter.moshi.MoshiConverterFactory
 import retrofit2.create
 import retrofit2.http.GET
 
-@OptIn(ExperimentalCoroutinesApi::class)
 class MainActivity : AppCompatActivity() {
 
 	private val database by lazy { QuoteDatabase(this) }
@@ -49,32 +49,35 @@ class MainActivity : AppCompatActivity() {
 		initServiceNetworkCall2()
 	}
 
+	@SuppressLint("SetTextI18n")
 	private fun initServiceNetworkCall() {
-		GlobalScope.launch {
-			/*when (val response1 = service.getSuccess()) {
-				is NetworkResponse.Success -> {
+		lifecycleScope.launch {
+			/*when (val response = service.getSuccess()) {
+				is ResponseV2.Success -> {
 					dummyText.post {
-						dummyText.text = "${response1.body?.data}"
+						dummyText.text = "Success ${response.response}"
 					}
 				}
-				is NetworkResponse.Failure -> {
+				is ResponseV2.Failure -> {
 					dummyText.post {
-						dummyText.text = "${response1.body?.data}"
+						dummyText.text = "Failure ${response.response}"
 					}
 				}
-			}*/
-			/*when (val response2 = service.getError()) {
-				is NetworkResponse.Success -> {
+			}
+			service.getSuccessRx().map { it.body() }
+				.compose(SwiggyRxSchedulers.applySingleSchedulers())
+				.subscribe { t1, _ ->
 					dummyText2.post {
-						dummyText2.text = "${response2.body}"
+						dummyText2.text = "$t1"
 					}
 				}
-				is NetworkResponse.Failure -> {
-					dummyText2.post {
-						dummyText2.text = "${response2.body}"
+			service.getSuccessRx2().map { it }
+				.compose(SwiggyRxSchedulers.applySingleSchedulers())
+				.subscribe { t1, _ ->
+					dummyText3.post {
+						dummyText3.text = "$t1"
 					}
-				}
-			}*/
+				}*/
 			/*when (val response3 = service.getFailure()) {
 				is NetworkResponse.Success -> {
 					dummyText3.post {
@@ -116,7 +119,7 @@ class MainActivity : AppCompatActivity() {
 
 	@SuppressLint("SetTextI18n")
 	private fun initServiceNetworkCall2() {
-		GlobalScope.launch {
+		lifecycleScope.launch {
 			/*service2.getSuccess().collect {
 				when (val response4 = it) {
 					is NetworkResponse.Success -> {
@@ -188,31 +191,31 @@ class MainActivity : AppCompatActivity() {
 				}
 			}*/
 			getRandomQuoteNoCache().collect {
+				Logger.e("getRandomQuoteNoCache $it")
 				when (val response = it) {
 					is Response.Success -> {
 						dummyText4.post {
-							dummyText4.text =
-								"Success isCached ${response.isCached} Response ${response.response}"
+							dummyText4.text = "Success $response"
 						}
 					}
 					is Response.Failure -> {
 						dummyText4.post {
-							dummyText4.text = "Failure ${response.response}"
+							dummyText4.text = "Failure $response"
 						}
 					}
 				}
 			}
 			getRandomQuote().collect {
+				Logger.e("getRandomQuote $it")
 				when (val response = it) {
 					is Response.Success -> {
 						dummyText5.post {
-							dummyText5.text =
-								"Success isCached ${response.isCached} Response ${response.response}"
+							dummyText5.text = "Success $response"
 						}
 					}
 					is Response.Failure -> {
 						dummyText5.post {
-							dummyText5.text = "Failure ${response.response}"
+							dummyText5.text = "Failure $response"
 						}
 					}
 				}
@@ -220,8 +223,35 @@ class MainActivity : AppCompatActivity() {
 		}
 	}
 
-	@ExperimentalCoroutinesApi
-	fun getRandomQuote(): Flow<Response<Quote>> {
+	val quoteTransformer = QuoteTransformer()
+
+	val randomRateLimiter = RateLimiter<String>(0,10)
+
+	val random = "getRandomQuote"
+
+	private fun getRandomQuote(): Flow<Response<Quote>> {
+		return networkBoundResource(
+			fetchFromLocal = { quoteDao.getQuote() },
+			shouldFetchFromRemote = {
+				val rateFlag = randomRateLimiter.shouldFetchRemote(random, it?.createdAt)
+				val flag = it == null || rateFlag
+				Logger.e("should fetch rateFlag $rateFlag flag $flag it?.createdAt ${it?.createdAt}")
+				flag
+			},
+			fetchFromRemote = { buildResponse(service2.getRandom(), quoteTransformer) },
+			saveRemoteData = { quoteDao.insertOrUpdateQuote(it) },
+			onFetchFailed = { randomRateLimiter.reset(random) }
+		)
+	}
+
+	private fun getRandomQuoteNoCache(): Flow<Response<QuoteResponse>> {
+		return networkBoundResource(
+			fetchFromRemote = { buildResponse(service2.getRandom()) },
+			shouldCache = { false }
+		)
+	}
+
+	/*private fun getRandomQuote(): Flow<Response<Quote>> {
 		return networkBoundResource(
 			fetchFromLocal = { quoteDao.getQuote() },
 			fetchFromRemote = { service2.getRandom3() },
@@ -229,62 +259,76 @@ class MainActivity : AppCompatActivity() {
 		)
 	}
 
-	@ExperimentalCoroutinesApi
-	fun getRandomQuoteNoCache(): Flow<Response<QuoteResponse>> {
+	private fun getRandomQuoteNoCache(): Flow<Response<QuoteResponse>> {
 		return networkBoundResource(
 			fetchFromRemote = { service2.getRandom2() },
 			shouldCache = { false }
 		)
-	}
+	}*/
 
 	interface ApiService {
 
+		/*@GET("success")
+		fun getSuccessRx(): RxRetroResponse<SuccessResponse>
+
 		@GET("success")
-		suspend fun getSuccess(): GenericNetworkResponse<SuccessResponse>
+		fun getSuccessRx2(): RxResponse<SuccessResponse>
+
+		@GET("success")
+		suspend fun getSuccess(): GenericResponseV2<SuccessResponse>
 
 		@GET("error")
-		suspend fun getError(): GenericNetworkResponse<ErrorResponse>
+		suspend fun getError(): GenericResponseV2<ErrorResponse>
 
 		@GET("failure")
-		suspend fun getFailure(): GenericNetworkResponse<ErrorResponse>
+		suspend fun getFailure(): GenericResponseV2<ErrorResponse>
 
 		@GET("random")
-		suspend fun getRandom(): GenericNetworkResponse<QuoteResponse>
+		suspend fun getRandom(): GenericResponseV2<QuoteResponse>
 
 		@GET("random")
-		suspend fun getRandom2(): GenericResponse<QuoteResponse>
+		suspend fun getRandom2(): GenericResponse<QuoteResponse>*/
 
 	}
 
 	interface ApiService2 {
 
-		@GET("success")
-		fun getSuccess(): FlowNetworkResponse<SuccessResponse>
+		@GET("random")
+		fun getRandom(): FlowRetroResponse<QuoteResponse>
 
-		@GET("error")
-		fun getError(): FlowNetworkResponse<ErrorResponse>
+		/*@GET("success")
+		fun getSuccess(): FlowResponseV2<SuccessResponse>*/
+
+		/*@GET("success")
+		fun getSuccess(): FlowResponseV2<SuccessResponse>*/
+
+		/*@GET("error")
+		fun getError(): FlowResponseV2<ErrorResponse>
 
 		@GET("failure")
-		fun getFailure(): FlowNetworkResponse<ErrorResponse>
+		fun getFailure(): FlowResponseV2<ErrorResponse>
 
 		@GET("random")
-		fun getRandom(): FlowNetworkResponse<QuoteResponse>
+		fun getRandom(): FlowResponseV2<QuoteResponse>
 
 		@GET("random")
 		fun getRandom2(): FlowResponse<QuoteResponse>
 
 		@GET("random")
-		fun getRandom3(): FlowResponse<Quote>
+		fun getRandom3(): FlowResponse<Quote>*/
 
 	}
 
 	private fun createRetrofit(client: OkHttpClient): Retrofit {
 		return Retrofit.Builder()
 			.baseUrl("https://7dac5580-146f-4be7-a44f-e770ee8a9565.mock.pstmn.io/")
+			.addCallAdapterFactory(flowCallAdapterFactory)
+			/*.addCallAdapterFactory(LegacyResponseAdapterFactory.create())
+			.addCallAdapterFactory(RxJava2CallAdapterFactory.create())
 			.addCallAdapterFactory(CoroutineNetworkResponseAdapterFactory.create())
 			.addCallAdapterFactory(CoroutineResponseAdapterFactory.create())
 			.addCallAdapterFactory(FlowNetworkResponseCallAdapterFactory.create())
-			.addCallAdapterFactory(FlowResponseCallAdapterFactory.create())
+			.addCallAdapterFactory(FlowResponseCallAdapterFactory.create())*/
 			.addConverterFactory(MoshiConverterFactory.create())
 			.client(client)
 			.build()

@@ -1,36 +1,37 @@
 package com.melegy.retrofitcoroutines.remote.vo
 
 import com.melegy.retrofitcoroutines.BaseResponse
+import io.reactivex.Single
 import kotlinx.coroutines.flow.Flow
 
 /**
  * Created by ravi on 09/08/20.
  */
 //T success data type, U error data type
-sealed class NetworkResponse<out T : Any, out U : Any> {
+sealed class ResponseV2<out T : Any, out U : Any> {
 
-	object Loading : NetworkResponse<Nothing, Nothing>()
+	object Loading : ResponseV2<Nothing, Nothing>()
 
 	data class Success<T : Any>(
 		val response: T? = null, val httpStatusCode: Int? = null, val isCached: Boolean? = null
-	) : NetworkResponse<T, Nothing>()
+	) : ResponseV2<T, Nothing>()
 
 	data class Failure<U : Any>(
 		val error: Error, val response: U? = null, val httpStatusCode: Int? = null,
 		val isCached: Boolean? = null
-	) : NetworkResponse<Nothing, U>()
+	) : ResponseV2<Nothing, U>()
 
 	companion object {
 
 		fun <T : Any> success(
 			body: T? = null, httpStatusCode: Int? = null, isCached: Boolean? = null
-		): NetworkResponse<T, Nothing> = Success(body, httpStatusCode, isCached)
+		): ResponseV2<T, Nothing> = Success(body, httpStatusCode, isCached)
 
 		fun <T : Any> failure(
 			error: Error, body: T? = null, httpCode: Int? = null, isCached: Boolean? = null
-		): NetworkResponse<Nothing, T> = Failure(error, body, httpCode, isCached)
+		): ResponseV2<Nothing, T> = Failure(error, body, httpCode, isCached)
 
-		fun loading(): NetworkResponse<Nothing, Nothing> = Loading
+		fun loading(): ResponseV2<Nothing, Nothing> = Loading
 	}
 
 	override fun toString(): String {
@@ -43,10 +44,16 @@ sealed class NetworkResponse<out T : Any, out U : Any> {
 
 }
 
-typealias GenericNetworkResponse<S> = NetworkResponse<BaseResponse<S>, BaseResponse<Any>>
+typealias GenericResponseV2<S> = ResponseV2<BaseResponse<S>, BaseResponse<Any>>
 
-typealias FlowNetworkResponse<S> = Flow<NetworkResponse<BaseResponse<S>, BaseResponse<Any>>>
+typealias FlowResponseV2<S> = Flow<ResponseV2<BaseResponse<S>, BaseResponse<Any>>>
+
+typealias RxRetroResponse<S> = Single<retrofit2.Response<BaseResponse<S>>>
+
+typealias RxResponse<S> = Single<BaseResponse<S>>
 
 typealias GenericResponse<S> = Response<BaseResponse<S>>
 
 typealias FlowResponse<S> = Flow<Response<BaseResponse<S>>>
+
+typealias FlowRetroResponse<S> = Flow<retrofit2.Response<BaseResponse<S>>>

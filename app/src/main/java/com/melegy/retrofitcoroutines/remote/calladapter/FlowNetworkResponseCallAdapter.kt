@@ -1,7 +1,7 @@
 package com.melegy.retrofitcoroutines.remote.calladapter
 
 import com.melegy.retrofitcoroutines.BaseResponse
-import com.melegy.retrofitcoroutines.remote.vo.NetworkResponse
+import com.melegy.retrofitcoroutines.remote.vo.ResponseV2
 import com.melegy.retrofitcoroutines.remote.retrofitcall.NetworkResponseCall
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
@@ -15,11 +15,11 @@ import java.lang.reflect.Type
 class FlowNetworkResponseCallAdapter<S : BaseResponse<Any>, E : BaseResponse<Any>>(
 	private val responseType: Type,
 	private val errorBodyConverter: Converter<ResponseBody, E>
-) : CallAdapter<S, Flow<NetworkResponse<S, E>>> {
+) : CallAdapter<S, Flow<ResponseV2<S, E>>> {
 
 	override fun responseType() = responseType
 
-	override fun adapt(call: Call<S>): Flow<NetworkResponse<S, E>> = flow {
+	override fun adapt(call: Call<S>): Flow<ResponseV2<S, E>> = flow {
 		emit(NetworkResponseCall(call, errorBodyConverter).await())
 	}
 

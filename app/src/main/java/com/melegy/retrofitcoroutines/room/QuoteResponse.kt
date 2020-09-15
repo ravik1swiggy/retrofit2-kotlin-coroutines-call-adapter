@@ -12,3 +12,5 @@ data class QuoteResponse(
 	var title: String,
 	val author: String
 )
+
+fun QuoteResponse.toQuote() = Quote(_internalId, id, title, author)

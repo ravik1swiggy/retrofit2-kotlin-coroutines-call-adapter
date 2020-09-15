@@ -1,7 +1,7 @@
 package com.melegy.retrofitcoroutines.remote.factory
 
 import com.melegy.retrofitcoroutines.BaseResponse
-import com.melegy.retrofitcoroutines.remote.vo.NetworkResponse
+import com.melegy.retrofitcoroutines.remote.vo.ResponseV2
 import com.melegy.retrofitcoroutines.remote.calladapter.NetworkResponseAdapter
 import retrofit2.Call
 import retrofit2.CallAdapter
@@ -16,8 +16,7 @@ class CoroutineNetworkResponseAdapterFactory private constructor() : CallAdapter
 
 	companion object {
 		@JvmStatic
-		fun create() =
-			CoroutineNetworkResponseAdapterFactory()
+		fun create() = CoroutineNetworkResponseAdapterFactory()
 
 		const val ERROR_CODE_INTERNAL = 503
 		const val ERROR_CODE_INTERNAL_SECONDARY = 403
@@ -36,7 +35,7 @@ class CoroutineNetworkResponseAdapterFactory private constructor() : CallAdapter
 			"return type must be parameterized as Call<NetworkResponse<<Foo>> or Call<NetworkResponse<out Foo>>"
 		}
 		val responseType = getParameterUpperBound(0, returnType)
-		if (getRawType(responseType) != NetworkResponse::class.java) {
+		if (getRawType(responseType) != ResponseV2::class.java) {
 			return null
 		}
 		check(responseType is ParameterizedType) {

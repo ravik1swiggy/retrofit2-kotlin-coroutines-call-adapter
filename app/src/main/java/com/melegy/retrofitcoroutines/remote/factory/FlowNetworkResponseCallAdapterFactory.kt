@@ -2,7 +2,7 @@ package com.melegy.retrofitcoroutines.remote.factory
 
 import com.melegy.retrofitcoroutines.BaseResponse
 import com.melegy.retrofitcoroutines.remote.calladapter.FlowNetworkResponseCallAdapter
-import com.melegy.retrofitcoroutines.remote.vo.NetworkResponse
+import com.melegy.retrofitcoroutines.remote.vo.ResponseV2
 import kotlinx.coroutines.flow.Flow
 import retrofit2.CallAdapter
 import retrofit2.Retrofit
@@ -32,7 +32,7 @@ class FlowNetworkResponseCallAdapterFactory private constructor() : CallAdapter.
 			"Flow return type must be parameterized as Flow<Foo> or Flow<out Foo>"
 		}
 		val responseType = getParameterUpperBound(0, returnType)
-		if (getRawType(responseType) != NetworkResponse::class.java) {
+		if (getRawType(responseType) != ResponseV2::class.java) {
 			return null
 		}
 		check(responseType is ParameterizedType) {
