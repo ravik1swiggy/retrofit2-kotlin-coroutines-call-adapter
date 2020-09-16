@@ -12,11 +12,11 @@ import okhttp3.ResponseBody
 inline fun <DB : Any, REMOTE : Any> networkBoundResource(
 	crossinline fetchFromLocal: () -> Flow<DB> = { emptyFlow() },
 	crossinline shouldCache: () -> Boolean = { true },
-	crossinline shouldFetchFromRemote: suspend (DB?) -> Boolean = { it == null },
+	noinline shouldFetchFromRemote: suspend (DB?) -> Boolean = { it == null },
 	crossinline fetchFromRemote: () -> Flow<Response<REMOTE>>,
 	crossinline processRemoteResponse: (response: REMOTE?) -> Unit = { },
 	crossinline saveRemoteData: (REMOTE) -> Unit = { },
-	crossinline onFetchFailed: suspend () -> Unit = { }
+	noinline onFetchFailed: suspend () -> Unit = { }
 ): Flow<Response<DB>> = flow {
 	val fetchFromCache = shouldCache()
 	val localData = if (fetchFromCache) fetchFromLocal().firstOrNull() else null
