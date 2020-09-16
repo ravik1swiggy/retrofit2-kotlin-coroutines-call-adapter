@@ -7,6 +7,7 @@ import com.melegy.retrofitcoroutines.transformers.FlowModelTransformer
 import com.orhanobut.logger.Logger
 import kotlinx.coroutines.flow.*
 import okhttp3.ResponseBody
+import retrofit2.Response as RetroResponse
 
 @Suppress("UNCHECKED_CAST")
 inline fun <DB : Any, REMOTE : Any> networkBoundResource(
@@ -14,18 +15,18 @@ inline fun <DB : Any, REMOTE : Any> networkBoundResource(
 	crossinline shouldCache: () -> Boolean = { true },
 	crossinline shouldFetchFromRemote: suspend (DB?) -> Boolean = { it == null },
 	crossinline fetchFromRemote: () -> Flow<Response<REMOTE>>,
-	crossinline processRemoteResponse: (response: REMOTE?) -> Unit = { },
-	crossinline saveRemoteData: (REMOTE) -> Unit = { },
-	crossinline onFetchFailed: suspend () -> Unit = { }
+	crossinline processRemoteResponse: (REMOTE) -> Unit = { },
+	crossinline saveRemoteData: suspend (REMOTE) -> Unit = { },
+	crossinline onFetchFailed: (suspend () -> Unit) = { }
 ): Flow<Response<DB>> = flow {
 	val fetchFromCache = shouldCache()
-	val localData = if (fetchFromCache) fetchFromLocal().firstOrNull() else null
+	val localData: DB? = if (fetchFromCache) fetchFromLocal().firstOrNull() else null
 	if (shouldFetchFromRemote(localData) || !fetchFromCache) {
 		fetchFromRemote().collect { apiResponse ->
 			when (apiResponse) {
 				is Response.Success -> {
-					processRemoteResponse(apiResponse.response)
 					if (fetchFromCache && apiResponse.response != null) {
+						processRemoteResponse(apiResponse.response)
 						saveRemoteData(apiResponse.response)
 						emitAll(fetchFromLocal().map { Response.success(it, isCached = true) })
 					} else {
@@ -50,7 +51,7 @@ inline fun <DB : Any, REMOTE : Any> networkBoundResource(
 
 @Suppress("UNCHECKED_CAST")
 fun <R, M> buildResponse(
-	call: Flow<retrofit2.Response<R>>,
+	call: Flow<RetroResponse<R>>,
 	modelTransformer: FlowModelTransformer<R, M>? = null
 ): Flow<Response<M>> {
 	return call.transform {
@@ -79,7 +80,7 @@ const val MESSAGE_NULL_RESPONSE_BODY = "null_response_body"
 const val MESSAGE_UNSUCCESSFUL_RESPONSE = "unsuccessful_response"
 
 fun <R> buildFailureResponse(
-	response: retrofit2.Response<R>,
+	response: RetroResponse<R>,
 	body: R? = null,
 	errorBody: ResponseBody? = null
 ): Response.Failure {
