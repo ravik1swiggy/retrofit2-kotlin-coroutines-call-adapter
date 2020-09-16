@@ -6,7 +6,7 @@ package com.melegy.retrofitcoroutines.remote.vo
 sealed class Response<out T> {
 
 	data class Success<out T>(
-		val response: T? = null, val httpStatusCode: Int? = null, val isCached: Boolean? = null
+		val response: T, val httpStatusCode: Int? = null, val isCached: Boolean? = null
 	) : Response<T>()
 
 	data class Failure(
@@ -17,7 +17,7 @@ sealed class Response<out T> {
 	companion object {
 
 		fun <T> success(
-			data: T? = null, httpStatusCode: Int? = null, isCached: Boolean? = null
+			data: T, httpStatusCode: Int? = null, isCached: Boolean? = null
 		): Response<T> = Success(data, httpStatusCode, isCached)
 
 		fun failure(

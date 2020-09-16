@@ -1,14 +1,15 @@
 package com.melegy.retrofitcoroutines
 
-import com.melegy.retrofitcoroutines.remote.vo.RateLimiter
 import android.annotation.SuppressLint
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
+import androidx.databinding.ObservableInt
 import androidx.lifecycle.lifecycleScope
 import com.melegy.retrofitcoroutines.remote.buildResponse
 import com.melegy.retrofitcoroutines.remote.factory.FlowCallAdapterFactory.Companion.flowCallAdapterFactory
 import com.melegy.retrofitcoroutines.remote.networkBoundResource
 import com.melegy.retrofitcoroutines.remote.vo.FlowRetroResponse
+import com.melegy.retrofitcoroutines.remote.vo.RateLimiter
 import com.melegy.retrofitcoroutines.remote.vo.Response
 import com.melegy.retrofitcoroutines.room.Quote
 import com.melegy.retrofitcoroutines.room.QuoteDatabase
@@ -18,6 +19,7 @@ import com.orhanobut.logger.Logger
 import kotlinx.android.synthetic.main.activity_main.*
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.launch
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
@@ -190,7 +192,7 @@ class MainActivity : AppCompatActivity() {
 					}
 				}
 			}*/
-			getRandomQuoteNoCache().collect {
+			/*getRandomQuoteNoCache().collect {
 				Logger.e("getRandomQuoteNoCache $it")
 				when (val response = it) {
 					is Response.Success -> {
@@ -204,7 +206,7 @@ class MainActivity : AppCompatActivity() {
 						}
 					}
 				}
-			}
+			}*/
 			getRandomQuote().collect {
 				Logger.e("getRandomQuote $it")
 				when (val response = it) {
@@ -225,31 +227,39 @@ class MainActivity : AppCompatActivity() {
 
 	val quoteTransformer = QuoteTransformer()
 
-	val randomRateLimiter = RateLimiter<String>(0,10)
+	val randomRateLimiter = RateLimiter(0, 10)
 
-	val random = "getRandomQuote"
+	val flag = ObservableInt(1)
 
-	private fun getRandomQuote(): Flow<Response<Quote>> {
+	fun getRandomQuote(): Flow<Response<Quote>> {
 		return networkBoundResource(
-			fetchFromLocal = { quoteDao.getQuote() },
+			fetchFromLocal = { quoteDao.getQuote(responseHash) },
 			shouldFetchFromRemote = {
-				val rateFlag = randomRateLimiter.shouldFetchRemote(random, it?.createdAt)
+				val rateFlag = randomRateLimiter.shouldFetchRemote(it?.createdAt)
 				val flag = it == null || rateFlag
-				Logger.e("should fetch rateFlag $rateFlag flag $flag it?.createdAt ${it?.createdAt}")
+				Logger.e("should fetch shouldFetchFromRemote $responseHash rateFlag $rateFlag flag $flag it?.createdAt ${it?.createdAt}")
 				flag
 			},
 			fetchFromRemote = { buildResponse(service2.getRandom(), quoteTransformer) },
-			saveRemoteData = { quoteDao.insertOrUpdateQuote(it) },
-			onFetchFailed = { randomRateLimiter.reset(random) }
+			saveRemoteData = {
+				it.primaryId = responseHash
+				it.title = "${flag.get()} ${it.title}"
+				quoteDao.insertOrUpdate(it)
+				Logger.e("should fetch saveRemoteData $it")
+				flag.set(flag.get() + 1)
+			}
 		)
 	}
 
-	private fun getRandomQuoteNoCache(): Flow<Response<QuoteResponse>> {
+	/*private fun getRandomQuoteNoCache(): Flow<Response<QuoteResponse>> {
 		return networkBoundResource(
 			fetchFromRemote = { buildResponse(service2.getRandom()) },
-			shouldCache = { false }
+			shouldCache = { false },
+			shouldFetchFromRemote = { true },
+			fetchFromLocal = { emptyFlow() },
+			onFetchFailed = { }
 		)
-	}
+	}*/
 
 	/*private fun getRandomQuote(): Flow<Response<Quote>> {
 		return networkBoundResource(

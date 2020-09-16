@@ -1,19 +1,31 @@
 package com.melegy.retrofitcoroutines.room.dao
 
-import androidx.room.Dao
-import androidx.room.Insert
-import androidx.room.OnConflictStrategy
-import androidx.room.Query
-import com.melegy.retrofitcoroutines.room.ID
+import androidx.room.*
 import com.melegy.retrofitcoroutines.room.Quote
 import kotlinx.coroutines.flow.Flow
 
 @Dao
-interface QuoteDao {
+interface QuoteDao : BaseDao<Quote> {
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    fun insertOrUpdateQuote(quote: Quote)
+	@Query("SELECT * from quote where id = :key")
+	fun getQuote(key: String): Flow<Quote>
+}
 
-    @Query("SELECT * from quote where id = $ID")
-    fun getQuote(): Flow<Quote>
+interface BaseDao<DATA> {
+
+	@Insert(onConflict = OnConflictStrategy.IGNORE)
+	suspend fun insertIgnore(obj: DATA)
+
+	@Insert(onConflict = OnConflictStrategy.REPLACE)
+	suspend fun insertOrUpdate(obj: DATA)
+
+	@Insert
+	suspend fun insert(vararg obj: DATA)
+
+	@Update
+	suspend fun update(obj: DATA)
+
+	@Delete
+	suspend fun delete(obj: DATA)
+
 }
